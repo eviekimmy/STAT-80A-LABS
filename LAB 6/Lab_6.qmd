@@ -1,0 +1,424 @@
+---
+title: "Card Games"
+format: 
+  dashboard:
+    orientation: rows
+server: shiny
+---
+
+```{r}
+#| context: setup
+
+library(tidyverse)
+library(furrr)
+
+# card initialization
+spade_suit <- "\u2660"
+club_suit <- "\u2663"
+heart_suit <- "\u2665"
+diamond_suit <- "\u2666"
+suits = c(spade_suit, club_suit, heart_suit, diamond_suit)
+ranks = c('A',2:10, 'J','Q','K','A')
+values = c('2'=2, '3'=3, '4'=4, '5'=5, '6'=6, '7'=7, '8'=8, '9'=9, 
+           '10'=10, 'J'=11, 'Q'=12, 'K'=13, 'A'=14)
+
+deck = str_c(rep(ranks[2:14], each=4), rep(suits, 13)) 
+
+straight = list()
+straight.flush = list()
+for (i in 0:9) {
+  straight = append(straight, list(str_c(ranks[1:5+i])))
+  for (j in suits) {
+    straight.flush = append(straight.flush, list(str_c(ranks[1:5+i], j)))
+  }
+}
+
+sim.table = NULL
+```
+
+# Information {.sidebar width=35%}
+
+## Instructions
+
+### Overview
+In this lab you will learn how to calculate probabilities when sampling without replacement. You will do this through the lens of Blackjack and Poker hands. In addition, you will also see how strategy can be used to tilt the odds of winning in your favor through the use of card counting. 
+
+### Part I: Blackjack
+Blackjack is a game where, instead of playing against other players, you play against the dealer. Each player and the dealer start with two cards, though the dealer only has one card showing. You can choose to hit or stay. Once everyone has either stayed or busted (points go over 21), then the dealer reveals their second card. They keep drawing until they either bust or are at least 17. Those with the hands higher than the dealer that did not bust win the round. One major difference between this and the previous casino games is that the cards are not shuffled after each round. This means that, as the game evolves, the probabilities of certain hands occurring changes overtime. 
+
+1. Let's consider the following scenario. There are three players at a blackjack table. The first player busted, having cards $3\heartsuit, 10\clubsuit, 9\diamondsuit$, the second player reached 21 ($5\diamondsuit, 6\diamondsuit, 8\spadesuit$) while the third player stayed at 20 ($Q\heartsuit, J\diamondsuit$). The dealer is showing a $6\clubsuit$. For now, assume that they are playing with one deck.
+
+  a. Given this setup, what is the probability the dealer has a 10 or face card as their hidden card?
+  b. The dealer does not need to hit if their total is $\geq 17$. What is the probability of the dealer not hitting after revealing their second card?
+  c. The dealer reveals that their second card is a $9\heartsuit$. They bust if one of two scenarios happen: (1) they draw an Ace and then a card valued between 6 and 10, (2) they draw a 7-10. What is the probability of the dealer busting?
+  
+Because the probabilities of each hand change overtime, being able to keep track of when the deck is in your favor can give you an advantage. This is usually done through card counting. While there are multiple systems created to count cards, we will focus on the one discussed in class as well as the book: you start the count at 0 and increase the count by 1 if you observe a 2-6 and decrease by 1 if you observe a 10, face card, or ace. Cards 7-9 do not change the count. Knowing the count can tell you whether the dealer is more likely to bust, and therefore whether you should play more aggressively or defensively with your current hand. It can also control how much you bet. 
+
+2. Let's put this into practice. Click "Start Game" to start playing Blackjack. For simplicity, it is only you and the dealer that are playing. Play how you normally would, but try to keep track of the count using the previously described system. Play for 10 rounds. Report what the final count was from the table, how close you were to that count, and whether it was difficult keeping track of the count. 
+
+3. If card counting can be used to gain the system for Blackjack, why do casinos offer it? (Graded on Effort. No wrong answers.)
+
+### Part II: Poker
+Poker is another card game where, instead of player against the dealer, people play against the each other. While there are many different variations of Poker, we will focus on Texas Hold'em. In Texas Hold'em, players are dealt two cards and make an initial bet. Three community cards are drawn by the dealer. Players decide how much to bet or whether to fold for each round. After each round, another community card is played. After five community cards are drawn, the player with the best hand wins the pot. The rankings of which hand wins is described below:
+
+- Royal flush: Ace to 10 of the same suit
+- Straight flush: 5 consecutive cards of same suit
+- Four of a kind: 4 cards w/ same number
+- Full house: 3 cards of one number and 2 of another
+- Flush: five cards of the same suit
+- Straight: 5 consecutive cards
+- 3 of a kind
+- 2 pairs
+- one pair
+- highest card
+
+4. Consider the following scenario: player one has the hand $3\heartsuit, 3\clubsuit$ while player two has $5\diamondsuit, 4\diamondsuit$. The "flop" (the first 3 community cards drawn) are $3\diamondsuit, 2\diamondsuit, A\spadesuit$. 
+
+a. How many possible combinations are there for the last two community cards? Assume we don't care about the order in which cards are drawn.
+b. Player two needs a $6\diamondsuit$ or an $A\diamondsuit$ to get a straight flush and guarantee the win. What is the probability of this occurring?
+c. After the "turn" (4th community card is drawn) a $3\spadesuit$ was drawn, which places player one at four of a kind. To secure the win, neither $6\diamondsuit$ nor $A\diamondsuit$ can be drawn. What is the probability that player one wins after the "river" (final community card drawn)?
+
+5. Who's hand would you prefer in this situation and why? (Graded on Effort. No wrong answers.)
+
+
+# Black Jack
+
+## Game
+```{r}
+#| title: Play Blackjack
+actionButton(inputId = 'blackjack', label = 'Start Game')
+```
+
+## Results
+```{r}
+#| title: Results Log
+tableOutput(outputId = 'blackjack.table')
+```
+
+<!--# Poker-->
+
+<!--## Hand-->
+```{r}
+#| title: Select Hand
+#| eval: false
+
+selectizeInput(inputId = 'poker.you', 'Select Your Poker Hand: ', 
+               choices = NULL, options = list(maxItems = 2))
+selectizeInput(inputId = 'poker.opponent', 'Select Opponent\'s Poker Hand: ', 
+               choices = NULL, options = list(maxItems = 2))
+selectizeInput(inputId = 'poker.community', 'Select Community Cards: ', 
+               choices = NULL, options = list(maxItems = 3))
+```
+
+<!--## Table-->
+```{r}
+#| title: Table of Hand Simulations
+#| eval: false
+
+tableOutput(outputId = 'poker.table')
+```
+
+
+```{r}
+#| context: server
+
+###### Poker
+
+# have deck as selectized Input
+updateSelectizeInput(session, 'poker.hand', choices=deck)
+updateSelectizeInput(session, 'poker.you', choices=deck)
+updateSelectizeInput(session, 'poker.opponent', choices=deck)
+updateSelectizeInput(session, 'poker.community', choices=deck)
+
+# helper functions
+highest.hand = function(hand) {
+
+  hand.df = data.frame(hand) %>% 
+    mutate(rank = str_extract(hand, "^[0-9JQKA]+"),
+           suit = str_extract(hand, "[♠♣♥♦]$"),
+           value = values[rank]) %>% 
+    arrange(rank)
+  
+  suit.counts = hand.df %>% summarise(.by = suit, count=n())
+  rank.counts = hand.df %>% summarise(.by = c(rank, value), count=n())
+  
+  # first check royal flush or straight flush
+  for (i in 40:1) {
+    is.straight.flush = sum(hand %in% straight.flush[[i]]) >= 5
+    if(is.straight.flush) {break}
+  }
+  
+  # now, check straight
+  for (j in 10:1) {
+    is.straight = sum(hand.df$rank %in% straight[[j]]) >= 5
+    if(is.straight) {break}
+  }
+  
+  # check flush
+  is.flush = 5 %in% suit.counts$count
+  
+  # check quantities that rely on rank
+  desc.count.rank = sort(rank.counts$count, decreasing = T)[1:2]
+  is.full.house = length(rank.counts$count[rank.counts$count == 3]) > 2 | 
+    (
+      length(rank.counts$count[rank.counts$count == 3]) > 0 & 
+        length(rank.counts$count[rank.counts$count == 2]) > 0
+    )
+  # is.four.kind = rank.counts$count[rank.counts$count == 4] %>% length() == 1
+  is.four.kind = 4 %in% rank.counts$count
+  is.three.kind = 3 %in% rank.counts$count
+  is.two.pair = rank.counts$count[rank.counts$count == 2] %>% length() >= 2
+  is.pair = rank.counts$count[rank.counts$count == 2] %>% length() == 1
+  
+  # determine highest hand and give a score for evaluation
+  # decimals for when two opponents have same hand
+  if (is.straight.flush & i %in% 37:40) {
+    highest.hand = 'royal flush'
+    score = 10
+  } else if (is.straight.flush) {
+    highest.hand = 'straight flush'
+    score = 9 + (i %/% 4)/10
+  } else if (is.four.kind) {
+    four.rank = rank.counts$rank[rank.counts$count == 4]
+    highest.hand = 'four of a kind'
+    score = 8 + values[four.rank] / 100
+  } else if (is.full.house) {
+    full.house.rank = rank.counts$rank[rank.counts$count == 3]
+    highest.hand = 'full house'
+    score = 7 + max(values[full.house.rank]) / 100
+  } else if (is.flush) {
+    highest.hand = 'flush'
+    score = 6
+  } else if (is.straight) {
+    highest.hand = 'straight'
+    score = 5 + j/100
+  } else if (is.three.kind) {
+    three.rank = rank.counts$rank[rank.counts$count == 3]
+    highest.hand = 'three of a kind'
+    score = 4 + values[three.rank] %>% max() / 100
+  } else if (is.two.pair) {
+    two.pair.ranks = rank.counts$rank[rank.counts$count == 2]
+    highest.hand = 'two pair'
+    score = 3 + values[two.pair.ranks] %>% max() / 100
+  } else if (is.pair) {
+    pair.rank = rank.counts$rank[rank.counts$count == 2]
+    highest.hand = 'pair'
+    score = 2 + values[pair.rank] / 100
+  } else {
+    highest.hand = 'high card'
+    score = 1 + values[hand.df$rank] %>% max() / 100
+  }
+  
+  list(highest.hand=highest.hand, score=score)
+}
+
+estimate.wins = function(you, opponent, community) {
+  
+  in.play = c(you, opponent, community)
+  community.full = c(community, sample(deck[!(deck %in% in.play)], 2))
+  
+  highest.you = highest.hand(c(you, community.full))
+  highest.opponent = highest.hand(c(opponent, community.full))
+  
+  outcome = case_when(highest.you$score > highest.opponent$score ~ 'win',
+            highest.you$score < highest.opponent$score ~ 'lose',
+            TRUE~'tie')
+  
+  list(you=highest.you$highest.hand, 
+       opponent=highest.opponent$highest.hand, 
+       outcome=outcome)
+  
+}
+
+sim.table = reactive({
+
+  req(length(input$poker.you) == 2)
+  req(length(input$poker.opponent) == 2)
+  req(length(input$poker.community) == 3)
+      
+  cat("YOU:", highest.hand(c(input$poker.you, input$poker.community))$highest.hand)
+  cat("OPP:", highest.hand(c(input$poker.opponent, input$poker.community))$highest.hand)  
+
+  withProgress(message = "Running simulation...", value = 0, {
+    
+    n_sims = 5000
+    chunk_size = 100   # optional, run in chunks
+    n_chunks = n_sims / chunk_size
+
+    results = vector("list", n_chunks)
+
+    for (i in 1:n_chunks) {
+      results[[i]] = map(1:chunk_size, ~ estimate.wins(input$poker.you, 
+                                                       input$poker.opponent, 
+                                                       input$poker.community))
+      incProgress(1 / n_chunks, detail = paste("Completed", i * chunk_size, "of", n_sims))
+    }
+    
+    hand_levels = c('royal flush', 'straight flush', 'four of a kind', 'full house',
+                      'flush', 'straight', 'three of a kind', 'two pair',
+                      'pair', 'high card')
+    
+    bind_rows(results) %>%
+      mutate(you = factor(you, hand_levels),
+             opponent = factor(opponent, hand_levels)) %>%
+      summarise(.by = c(you, opponent),
+                win = sum(outcome == 'win'),
+                lose = sum(outcome == 'lose'),
+                tie = sum(outcome == 'tie')) %>% 
+      arrange(you, opponent)
+  })
+})
+
+output$poker.table = renderTable({
+  sim.table()
+})
+
+
+###### Blackjack
+game <- reactiveValues(
+  card.value = c(2:10, 'J','Q','K','A'),
+  shoe = 8,
+  shuffle = NULL,
+  player = NULL,
+  dealer = NULL,
+  rounds = NULL,
+  count = NULL
+)
+
+# helper functions
+start.new.round = function() {
+  game$count = cumsum(game$shuffle$count)
+  game$dealer = game$shuffle[c(1,3),]
+  game$player = game$shuffle[c(2,4),] %>% mutate(hit=T)
+  game$shuffle = game$shuffle[-c(1:4),]
+}
+
+prompt.user = function() {
+  # conditions that stop turn
+  bust = min(sum(game$player$value.1), sum(game$player$value.11)) >= 21
+  hit = sum(game$player$hit) == nrow(game$player)
+  dealer.win = sum(game$dealer$value.11) == 21
+  player.win = sum(game$player$value.11) == 21
+  
+  if (!bust & hit & !dealer.win & !player.win) {
+    showModal(modalDialog(
+      textOutput(outputId = 'dealer.hand'),
+      textOutput(outputId = 'player.hand'),
+      selectInput(inputId = 'action', label = 'Hit?', choices = c('Hit','Stay'),
+                  selected = NULL),
+      footer = tagList(
+          modalButton("Quit"),
+          actionButton("confirm", "Confirm")
+        )
+    ))
+  } else {
+    dealer.turn()
+  }
+}
+
+dealer.turn = function() {
+  
+  # dealer stops when hand is over 17
+  keep.going = 
+    ( sum(game$dealer$value.1) < 17 ) & 
+    ( sum(game$dealer$value.11) < 17 ) &
+    ( sum(game$player$value.1) <= 21 ) &
+    ( sum(game$player$value.11) <= 21 )
+  
+  while(keep.going) {
+    
+    # add to hand and remove from shuffle
+    game$dealer = bind_rows(game$dealer, game$shuffle[1,] %>% mutate(hit=T))
+    game$shuffle = game$shuffle[-c(1),]
+    keep.going = min(sum(game$dealer$value.1), sum(game$dealer$value.11)) < 17
+    
+  }
+  
+  cards.played = nrow(game$player) + nrow(game$dealer)
+  player.scores = c(sum(game$player$value.1), sum(game$player$value.11))
+  dealer.scores = c(sum(game$dealer$value.1), sum(game$dealer$value.11))
+  player.score = max(player.scores[player.scores <= 21])
+  dealer.score = max(dealer.scores[dealer.scores <= 21])
+  game$rounds = bind_rows(
+    game$rounds, 
+    data.frame(player.score=player.score, dealer.score=dealer.score, 
+               win=player.score > dealer.score,count=game$count[cards.played])
+  )
+  
+  showModal(modalDialog(
+    textOutput(outputId = 'final.dealer.hand'),
+    textOutput(outputId = 'player.hand'),
+    footer = tagList(
+          modalButton("Quit"),
+          actionButton("play.again", "Play Again")
+        )
+  ))
+  
+}
+
+# text renders for pop-ups
+output$dealer.hand = renderText({
+  req(game$dealer)
+  str_flatten(c('dealer: ', game$dealer$hand[1]), collapse = ' ')
+})
+
+output$player.hand = renderText({
+  req(game$player)
+  str_flatten(c('you: ', game$player$hand), collapse = ' ')
+})
+
+output$final.dealer.hand = renderText({
+  req(game$dealer)
+  str_flatten(c('dealer: ', game$dealer$hand), collapse = ' ')
+})
+
+# buttons during game
+observeEvent(input$blackjack, {
+  game$rounds = NULL
+  game$shuffle = data.frame(hand = sample(rep(game$card.value, 4*game$shoe))) %>%
+    mutate(value.1 = case_when(hand %in% c('J','Q','K')~10,
+                               hand =='A'~1,
+                               .default = as.integer(hand)),
+           value.11 = case_when(hand %in% c('J','Q','K')~10,
+                                hand =='A'~11,
+                                .default = as.integer(hand)),
+           count = case_when(hand %in% paste0(2:6)~1,
+                             hand %in% c('10','J','Q','K','A')~-1,
+                             .default = 0))
+  
+  start.new.round()
+  prompt.user()
+  
+})
+
+observeEvent(input$confirm, {
+  req(input$action)
+  
+  removeModal()
+  if(input$action == 'Hit') {
+    game$player = bind_rows(game$player, game$shuffle[1,] %>% mutate(hit=T))
+    game$shuffle = game$shuffle[-c(1),]
+    
+  } else {
+    # condition allows for hit to be false
+    game$player[nrow(game$player),"hit"] = F
+  }
+  
+  prompt.user()
+})
+
+observeEvent(input$play.again, {
+  removeModal()
+  start.new.round()
+  prompt.user()
+})
+
+output$blackjack.table = renderTable({
+  req(nrow(game$rounds) > 1)
+  game$rounds %>%
+    mutate(count = cumsum(count))
+})
+
+```
+
+

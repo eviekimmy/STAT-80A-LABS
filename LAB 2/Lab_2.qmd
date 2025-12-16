@@ -1,0 +1,298 @@
+---
+title: "American Roulette"
+format: 
+    dashboard:
+        orientation: rows
+server: shiny
+message: false
+warning: false
+---
+
+
+```{r}
+#| context: setup
+
+library(tidyverse)
+library(plotly)
+library(tidymodels)
+```
+
+# {.sidebar width='35%'}
+```{r}
+#| title: Student Seed
+numericInput(inputId = "seed", label = "Random Seed:", value = 1234, min = 0, max = 9999, step = 1)
+```
+
+### Overview
+
+This Lab revolves around simulating spins from a roulette wheel. You will 
+compare different bets and their convergence to their expected profits, as well 
+as compare frequencies between a biased and unbiased wheel. There will also be 
+some brief discussion of Chebyshev's Theorem (equations provided). For 
+additional help, refer to Chapter 3 of the textbook. Answer the questions using 
+the corresponding Canvas quiz. 
+
+### Set Seed
+Please set the random seed to the last 4 digits of your Student ID (if using 
+your ID card, your Student ID is the number between the 2 dashes). 
+
+### Part I: Comparing Betting Strategies
+For this lab, we will focus on four different kinds of bets: Straight up bets, 
+split bets, red or black, and first to third dozen. The payouts are 35:1, 17:1, 
+1:1, and 2:1. They are set in such a way that the expected profit for each bet 
+is -2/38 for a \$1 bet. Out of 38 pockets, the number of pockets that 
+correspond to each bet are 1, 2, 18, and 12. 
+
+1. Calculate the variance for each bet if the betting amount is \$1. 
+
+2. Set the betting amounts to $1. Focus on the first plot, which shows the running average profit as more spins are generated. Compare this to the dotted line, which is the expected profit each running average should converge to. Are there any bets that take longer to converge than others? Is there a relationship between the variance of a bet and how long it takes to converge?
+
+3. Now, adjust the bets so you bet \$3 on red and \$2 on the 2nd dozen, and the remaining bets are 0. The running average of the combined bet is shown in the second plot. Adjust the plot so only the dozen and color bet are shown. Fill out the table on the Canvas quiz and use it to calculate the mean and variance. 
+
+```{r}
+tableOutput('combined.bet')
+```
+
+4. How does the variance of this combined bet compare to the individual variances of the betting on red and the 2nd dozen? Does the behavior between these two plots agree with this relationship? 
+
+The mean of this combined bet can also be calculated separately:
+
+X = profit from red/black bet
+
+Y = profit from dozen bet
+
+$$
+\begin{aligned}
+\mathbb{E}[3X + 2Y] &= 
+5\mathbb{E}[X] + 2\mathbb{E}[Y]  \\ 
+&\approx 3(-0.0526) + 2(-0.0526) \\ 
+&\approx -0.263
+\end{aligned}
+$$
+
+This equation can make calculations easier, and works regardless if X and Y are independent or not. However, the same is not typically true for vairance. The following equation for variance:
+
+$$
+\begin{aligned}
+Var[3X + 2Y] &= 
+3^2Var[X] + 2^2Var[Y]
+\end{aligned}
+$$
+
+***ONLY APPLIES*** when X and Y are *independent*.
+
+5. What are the pros and cons of combining bets (Graded on effort. No wrong answers. If you are having trouble, compare the mean and variance between the combined bets and individual bets). 
+
+### Part II: Bias Detection
+Switch the panel to "Bias Detection." For this section, you will adjust the bias 
+of pockets 2,4, and 21, as well as how many spins are performed. The left plot 
+displays the frequency of each pocket when there is a bias, while the right plot 
+corresponds to an even wheel. Make sure the bias is set to 0.033 and the number 
+of spins to 10,000. 
+
+6. If you did not know beforehand that 2,4, and 21 were biased, would you be able to distinguish the biased wheel from the unbiased one based on these frequencies? 
+
+7. Increase the number of spins until the p-value is 10,000. A p-value less than 0.05 would indicate a significant difference between the biased and unbiased wheel frequencies. Does it ever reach significance?
+
+8. Keep the number of spins at 10,000 and increase the bias until the p-value is less than 0.05. Based on the biased wheel graph, would you be able to tell that pockets 2,4,21 are biased? (Graded on effort. No wrong answers.) 
+
+# Comparing Betting Strategies
+
+## Bets {height='30%'}
+
+### Straight
+```{r}
+#| title: Straight Up
+selectInput("straight_choice", NULL, choices = c("00","0",as.character(1:36)))
+numericInput("straight_amount", NULL, 0, min=0, width="100%")
+```
+
+### Split
+```{r}
+#| title: Split
+selectInput("split_choice", NULL, choices = c("1-2","2-3","4-5","5-6","7-8","8-9","10-11","11-12"))
+numericInput("split_amount", NULL, 0, min=0, width="100%")
+```
+
+### Color
+```{r}
+#| title: Color
+selectInput("color_choice", NULL, choices = c("Red","Black"))
+numericInput("color_amount", NULL, 0, min=0, width="100%")
+```
+
+### Dozen
+```{r}
+#| title: Dozen
+selectInput("dozen_choice", NULL, choices = c('1st', '2nd', '3rd'))
+numericInput("dozen_amount", NULL, 0, min=0, width="100%")
+```
+
+## Plots
+
+```{r}
+#| title: Individual Bets
+
+plotlyOutput("individualPlot")
+```
+
+```{r}
+#| title: Combined Bet
+
+plotlyOutput("combinedPlot")
+```
+
+# Bias Detection
+
+## Controls {height='25%'}
+
+```{r}
+numericInput("bias_level", "Bias Level:", min = 0, max = 0.1, value = 0.026, step = 0.001)
+numericInput("bias_n", "Number of Spins:", value = 1000, min = 1000, step = 1000, max = 10000)
+```
+
+## Plots
+
+### Biased Wheel
+```{r}
+plotOutput("biasPlot")
+```
+
+### Unbiased Wheel
+```{r}
+plotOutput("unbiasPlot")
+```
+
+## Chi-Squared Table
+
+```{r}
+tableOutput('significantTable')
+```
+
+```{r}
+#| context: server
+
+# bets
+simulate_roulette <- function(bets, amounts, seed, n_spins = 30000) {
+  
+  set.seed(seed)
+  wheel <- c("00", "0", as.character(1:36))
+  spins <- sample(wheel, n_spins, replace = TRUE)
+  
+  reds <- c("1","3","5","7","9","12","14","16","18","19","21","23","25","27","30","32","34","36")
+  blacks <- c("2","4","6","8","10","11","13","15","17","20","22","24","26","28","29","31","33","35")
+  
+  split.bets = list('1-2' = wheel[3:4], '2-3' = wheel[4:5], '4-5' = wheel[6:7], 
+                    '5-6' = wheel[7:8], '7-8' = wheel[9:10], '8-9' = wheel[10:11], 
+                    '10-11' = wheel[12:13], '11-12' = wheel[13:14])
+  color.bets = list('Red' = reds, 'Black' = blacks)
+  dozen.bets = list('1st' = wheel[1:12], '2nd' = wheel[13:24], 
+                    '3rd' = wheel[25:36])
+  
+  ifelse(spins == bets[1], 35*amounts[1], -amounts[1]) -> running.straight
+  ifelse(spins %in% split.bets[[bets[2]]], 17*amounts[2], -amounts[2]) -> running.split
+  ifelse(spins %in% color.bets[[bets[3]]], amounts[3], -amounts[3]) -> running.color
+  ifelse(spins %in% dozen.bets[[bets[4]]], 2*amounts[4], -amounts[4]) -> running.dozen
+  
+  running.total = running.straight + running.split + running.color + running.dozen
+  
+  data.frame(
+    Spin = 1:n_spins, 
+    Straight = running.straight %>% cummean(),
+    Split = running.split %>% cummean(),
+    Total = running.total %>% cummean(),
+    Color = running.color %>% cummean(),
+    Dozen = running.dozen %>% cummean()
+  )
+}
+
+sim_data <- reactive({
+    bets <- c(input$straight_choice, input$split_choice,
+              input$color_choice, input$dozen_choice)
+    amounts = c(input$straight_amount, input$split_amount,
+                input$color_amount, input$dozen_amount)
+    simulate_roulette(bets, amounts, input$seed)
+  })
+
+output$individualPlot <- renderPlotly({
+    req(sim_data())
+    df <- sim_data() %>% select(-Total)
+    df_long <- tidyr::pivot_longer(df, -Spin, names_to = "Bet", values_to = "AvgProfit")
+
+    p <- ggplot(df_long, aes(x = Spin, y = AvgProfit, color = Bet)) +
+        geom_line() +
+        geom_hline(linetype='dashed', yintercept = -2/38 * c(input$straight_amount, input$split_amount, input$color_amount, input$dozen_amount)) + 
+        labs(x = "Number of Spins", y = "Running Average Profit", color = "Bet") +
+        theme_minimal(base_size = 14)
+
+    ggplotly(p)
+})
+  
+output$combinedPlot <- renderPlotly({
+    req(sim_data())
+    df <- sim_data()
+    combined.exp = sum(-2/38 * c(input$straight_amount, input$split_amount, input$color_amount, input$dozen_amount))
+    p <- ggplot(df, aes(x = Spin, y = Total)) +
+        geom_line(color = "#E74C3C") +
+        geom_hline(yintercept=combined.exp, linetype='dashed') +
+        labs(x = "Number of Spins", y = "Running Average Combined Profit") +
+        theme_minimal(base_size = 14)
+
+    ggplotly(p)
+})
+
+# biased vs unbiased wheel
+bias_data <- reactive({
+    number <- as.character(0:37)
+    number[38] <- '00'
+    
+    bias <- input$bias_level
+    n <- input$bias_n
+    
+    biased.probs <- rep((1 - bias) / 35, 38)
+    biased.probs[c(3, 5, 22)] <- rep(bias, 3)
+    
+    set.seed(NULL)
+    unbiased <- sample(x = number, size = n, replace = TRUE)
+    
+    set.seed(input$seed)
+    biased <- sample(x = number, size = n, prob = biased.probs, replace = TRUE)
+    
+    data.frame(
+      biased.value = factor(biased, levels = number),
+      unbiased.value = factor(unbiased, levels = number)
+    )
+  })
+
+output$biasPlot = renderPlot({
+    req(bias_data())
+    df = bias_data() 
+    df %>% 
+      ggplot(aes(y=biased.value)) +
+      geom_bar(fill='#db4d37')
+  })
+  
+output$unbiasPlot = renderPlot({
+    req(bias_data())
+    df = bias_data() 
+    df %>% 
+        ggplot(aes(y=unbiased.value)) +
+        geom_bar(fill='#2a7fbf')
+})
+
+output$significantTable = renderTable({
+    req(bias_data())
+    df = bias_data() 
+        # summarise(.by = biased.value, n())
+    table(df$biased.value) |> chisq.test() |> tidy()
+})
+
+# table for instructions
+output$combined.bet = renderTable({
+    data.frame(
+        Outcome=c('Red in second dozen', 'Black in second dozen', 'Red not in second dozen', 'Rest'),
+        Prob=rep('-',4),
+        Profit=rep('-',4)
+    )
+})
+```

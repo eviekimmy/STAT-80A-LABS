@@ -1,0 +1,123 @@
+---
+title: "Law of Large Numbers"
+format: 
+  dashboard:
+    orientation: rows
+server: shiny
+---
+```{r}
+#| context: setup
+
+library(tidyverse)
+library(plotly)
+```
+
+# {.sidebar width=35%}
+
+## Seed
+```{r}
+numericInput('student_id', 'Last Four Digits of Student ID', 
+             value = 1234, min = 0, max = 9999, step = 1)
+```
+
+## Instructions
+
+### Overview
+Simulations are often used to verify empirically a result calculated by hand, or to calculate values that require too many computations to do with pen and paper. This lab will show you how the law of large numbers is utilized to perform these simulations. 
+
+You will be generating plots similar to Figure 1.1 in your textbook. You can control the number of flips performed, how biased the coin is towards heads, and how many you run the experiment. Take some time to experiment with the sliders and inputs to see how they affect the plot. A brief demonstration will also be presented at the beginning of class. 
+
+Follow the instructions and use these to complete Lab Report 1 on Canvas. 
+
+### Preparation
+Please set the seed to the last four digits of your student id. 
+
+### One run
+1. First, ensure that the probability set to 0.5, number of runs to 1, and number of flips is set to 1000. Hover your cursor over the last number in the run and use it to estimate the odds (both in favor and against) of getting heads. How do these measured quantities compare to their theoretical counterparts? Compare mean, odds in favor and odds against.
+
+2. Now, repeat these calculations for when number of flips is 5000 and then 10,000. What happens when you increase the number of flips? To what precision do they resemble the theoretical values (i.e. what decimal do they start to differ)?
+
+3. Use what you just learned to describe the role that the law of large numbers plays in simulation.
+
+### Comparing Multiple Runs
+4. Set the number of runs back to 1000. Now, start increasing the number of runs to 3, 5, and 10 runs. Report the mean, variance, and range for the final point at each run.
+
+5. What happens to these measured quantities as you increase the number of runs?
+
+6. Use what you just learned to describe the role that the law of averages plays in simulation.
+
+# Simulation
+
+## Controls {height='30%'}
+```{r}
+selectInput('n_flips', 'Number of Flips per Run:', 
+                    choices = c('1000', '5000','10000'), 
+                    selected = '1000')
+numericInput('n_runs', 'Number of Runs:', 
+                     value = 1, min = 1, max = 10, step = 1)
+
+```
+
+```{r}
+sliderInput('p_heads', 'Probability of Heads:', 
+                    min = 0, max = 1, value = 0.5, step = 0.05)
+```
+
+
+## Plot 
+```{r}
+plotlyOutput('simPlot')
+```
+
+```{r}
+#| context: server
+
+simData <- reactive({
+    n_flips <- as.numeric(input$n_flips)
+    n_runs <- as.numeric(input$n_runs)
+    p_heads <- input$p_heads
+    
+    # use Student ID as seed
+    set.seed(as.numeric(input$student_id))
+    
+    # simulate coin flips
+    flips <- matrix(rbinom(n_flips * n_runs, size = 1, prob = p_heads),
+                    nrow = n_flips, ncol = n_runs)
+    probs <- apply(flips, 2, function(x) cumsum(x) / seq_along(x))
+    
+    df <- data.frame(
+      flip = rep(1:n_flips, times = n_runs),
+      prob = as.vector(probs),
+      run  = rep(paste0('Run ', 1:n_runs), each = n_flips)
+    )
+    
+    df
+  })
+
+output$simPlot <- renderPlotly({
+    req(simData())
+    df <- simData()
+    
+    g <- ggplot(df, aes(x = flip, y = prob, group = run, color = run,
+                        text = paste('Run:', run, '<br>Flip:', flip, 
+                                     '<br>Prob:', round(prob, 3)))) +
+      geom_line(alpha = 0.7) +
+      geom_point(data = df %>% group_by(run) %>% slice_tail(n = 1), size = 2) +
+      geom_hline(yintercept = input$p_heads, linetype = 'dashed') +
+      labs(
+        x = 'Flip Number', 
+        y = 'Running Probability of Heads',
+        title = 'Simulated Running Probabilities',
+        subtitle = paste('Theoretical probability =', input$p_heads)
+      ) +
+      theme_minimal() +
+      theme(legend.position = 'none') +
+      coord_cartesian(xlim = c(1, max(df$flip) * 1.05), ylim = c(0, 1))
+    
+    ggplotly(g, tooltip = 'text') %>%
+      layout(margin = list(t = 80), showlegend=T)
+  })
+```
+
+
+

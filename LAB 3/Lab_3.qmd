@@ -1,0 +1,175 @@
+---
+title: "Lottery Simulation"
+format: dashboard
+server: shiny
+---
+
+```{r}
+#| context: setup
+
+library(tidyverse)
+```
+
+# {.sidebar width='35%'}
+
+## Seed
+```{r}
+numericInput('seed', 'Last Four Digits of Student ID', value = 1234,
+             min=1000, max=1999, step=1)
+```
+
+## Instructions
+### Overview
+
+In this lab, you will simulate lottery wins from both the Colorado lotto+ and 
+the California lotto. For additional help, refer to Chapter 4 of the textbook or 
+the previous lecture. 
+
+### Preparation
+Please input the last four digits of your student ID into the seed. If you are 
+sharing a device with another student, either repeat the problems with your 
+specific seed, or make a note in your answers that you are using another 
+person's seed (please also write down the seed they are using). 
+
+### Part I: The Colorado Lotto+ 
+***NOTE: While similar to the Colorado Lotto discussed in the book and Wednesday's lecture, there are slight differences.***
+
+The Colorado lottery works by selecting 6 numbers from a set of 40 numbers 
+(1-40). These numbers are selected without replacement, meaning the number is 
+not put back once selected (i.e. if I draw a 3 for the first number, then I am 
+drawing from 1,2,4-40 for the second number). Also, usually the order in which 
+numbers are drawn are not important (i.e. drawing 5-8-17-37-16-2 is the same as 
+drawing 8-17-5-37-16-2). Because of this, the tickets are in ascending order (so
+the draw would look like 2-5-8-16-17-37). There are different prizes for each 
+ticket: first prize is getting all size numbers, second prize is matching 5 of 
+the 6, third prize is matching 4 of the 6, and fourth for matching 3 of the 6. 
+
+1. Let's say you pay for your lottery ticket and there's a glitch when printing. 
+The numbers that got printed were 2-2-5-8-17-39. What are the corresponding 
+probabilities for first, second, and third prize for this ticket? (Hint: No math 
+is needed for the first one). 
+
+Because the payouts depend on how many people are playing, the exact expected 
+profit changes every play. For now, let's focus on the payout from the most 
+recent drawing: Wednesday 10/15/25. 
+
+- Winning numbers: 4-15-16-22-29-31
+
+- Price of ticket: \$2
+
+- 6 of 6: \$1,506,501
+- 5 of 6: \$1250
+- 4 of 6: \$125
+- 3 of 6: \$15
+- otherwise: \$0
+
+2. Based on the numbers above, what is the expected profit (not payout) from
+this draw?
+
+3. Plug in these winning numbers and record the number of times this ticket wins
+each prize for 10,000 draws, 100,000 draws, and 1,000,000 draws. 
+
+4. Do the previous simulation results make sense?
+
+### Part II: The California Lotto
+The California Lotto has a similar setup, but with some slight modifications. 
+Now, instead of drawing 6 from 40, you are now drawing 5 from 47. Additionally, 
+you also draw an extra "Mega" number from 1-27. While the first prize is still 
+matching all 6 numbers, the second prize is now matching the first 5 numbers 
+(not Mega) and the third prize is matching 4 of the 5 numbers (and the Mega). 
+For this one, assume there is no more prizes. 
+
+5. Recalculate the probability of each prize for the ticket from question 1, but 
+now with the extra 2 as the Mega number (2-5-8-17-39-**2**) given the new prize
+rules. 
+
+6. Plug in these winning numbers and record the number of times this ticket wins
+each prize for 10,000 draws, 100,000 draws, and 1,000,000 draws. 
+
+7. If you are extremely unlikely to win the lottery, why do so many people still
+play? (Graded on effort. No wrong answers.)
+
+# Colorado Lotto
+
+## Input {.toolbar}
+```{r}
+selectizeInput("co_nums", "Choose 6 numbers (1–42):", 
+               choices = 1:40, multiple = TRUE)
+numericInput('co_plays', 'Number of Plays', value = 10000,
+             min=1000, max=100000, step=1000)
+```
+
+## Table
+```{r}
+tableOutput('co_table')
+```
+
+# California Lotto
+
+## Input {.toolbar}
+```{r}
+selectizeInput("ca_nums", "Choose 5 numbers (1–47):", 
+               choices = 1:47, multiple = TRUE)
+selectizeInput("ca_mega", "Choose Mega Number (1–27):", 
+               choices = 1:27, multiple = TRUE)
+numericInput('ca_plays', 'Number of Plays', value = 10000,
+             min=1000, max=100000, step=1000)
+```
+
+## Table
+```{r}
+tableOutput('ca_table')
+```
+
+```{r}
+#| context: server
+
+# simulate draws Colorado
+co_results = reactive({
+  set.seed(input$seed)
+  co.draws = replicate(n = input$co_plays,
+                       sum(sample(x = 1:40, size = 6) %in% input$co_nums))
+  
+  data.frame(Matches = co.draws)
+})
+
+# simulate draws California
+ca_results = reactive({
+  set.seed(input$seed)
+  ca.draws = replicate(n = input$ca_plays, 
+                       sum(sample(x = 1:47, size = 5) %in% input$ca_nums))
+  mega = sample(x = 1:27, size = input$ca_plays, replace = T) 
+  
+  data.frame(Matches = ca.draws, Mega = mega)
+})
+
+# Corresponding tables
+output$co_table = renderTable({
+  req(co_results())
+  co_results() %>% 
+    summarize(
+      First = sum(Matches == 6),
+      Second = sum(Matches == 5),
+      Third = sum(Matches == 4),
+      Fourth = sum(Matches == 3),
+    )
+})
+
+output$ca_table = renderTable({
+  req(ca_results())
+  ca_results() %>% 
+    summarize(
+      First = sum(Matches == 5 & Mega == input$ca_mega),
+      Second = sum(Matches == 5 & Mega != input$ca_mega),
+      Third = sum(Matches == 4 & Mega == input$ca_mega),
+    )
+})
+```
+
+
+
+
+
+
+
+

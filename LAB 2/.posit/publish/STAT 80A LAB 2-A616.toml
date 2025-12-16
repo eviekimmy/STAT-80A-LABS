@@ -1,0 +1,14 @@
+product_type = 'connect_cloud'
+'$schema' = 'https://cdn.posit.co/publisher/schemas/posit-publishing-schema-v3.json'
+type = 'html'
+entrypoint = 'Lab_2.html'
+source = 'Lab_2.qmd'
+validate = true
+files = [
+  '/Lab_2.html',
+  '/.posit/publish/STAT 80A LAB 2-A616.toml',
+  '/.posit/publish/deployments/deployment-C271.toml',
+  '!/Lab_2.qmd',
+  '!/Lab_2_files'
+]
+title = 'STAT 80A LAB 2'

@@ -1,0 +1,330 @@
+---
+title: "Mixed Strategy"
+format: 
+  dashboard:
+    orientation: rows
+    
+server: shiny
+---
+
+```{r}
+#| context: setup
+
+library(tidyverse)
+library(plotly)
+library(pracma)
+```
+
+# {.sidebar width=35%}
+
+## Instructions
+
+### Overview
+In this lab you will analyze the behavior of mixed strategies for different two player games. You will do this for both zero sum and non-zero sum games.
+
+### Mixed Strategy (Zero Sum)
+The previous lab discussed how to find dominant and dominated strategies for zero sum games, and how those can be used to determine the mutually best pair of strategies, called a Nash equilibrium. While in some scenarios this pair of strategies is deterministic, there are situations where there are multiple pure Nash equilibria both players can choose, as well as situations where there are none. When those occur, the solution is usually to find a mixed strategy, where both players randomly switch between strategies.
+
+This was briefly discussed at the end of the previous lab. Effectively, the goal is to find a set of probabilities where the expected utility of each strategy is the same no matter how your opponent plays. 
+
+1. Let's look at the previous example:
+```{r}
+tableOutput('mixed.strategy')
+```
+
+Focus on finding the probabilities for Player A. Here, we want to assign probabilities to A1, A2, and A3 such that 
+$$\mathbb{E}[B1] = \mathbb{E}[B2] = \mathbb{E}[B3]$$ 
+Fill in the values in the equations on Canvas to determine what equations should be equal to each other. 
+
+2. Do the same but for Player B.
+
+3. For both cases, this gives two systems of equations:
+$$
+\begin{aligned}
+\mathbb{E}[B1] - \mathbb{E}[B2] &= 0 \\
+\mathbb{E}[B1] - \mathbb{E}[B3] &= 0
+\end{aligned}
+$$
+or 
+$$
+\begin{aligned}
+\mathbb{E}[A1] - \mathbb{E}[A2] &= 0 \\
+\mathbb{E}[A1] - \mathbb{E}[A3] &= 0
+\end{aligned}
+$$
+
+For each case, we need one more equation to solve for all three probabilities. Fill in what that equation is on Canvas.
+
+Solving the rest is very straightforward. You can either solve the system of equations by hand, or, if you are familiar with reduced-row echelon form, construct the matrix and find the probabilities that way (The code for this and the previous lab use this method to calculate the probabilities). 
+
+4. Plug in the payoff table into the matrix, and look at the plot that was generated. How close does the simulated expected payoff for Player A get to the derived expected value?
+
+5. Let's look at another setup from the previous lab:
+```{r}
+tableOutput('dominated')
+```
+Here, there are two dominated strategies: A1 and B2. However, plugging that table into the matrix give non-zero probabilities to these strategies. Furthermore, when simulating these mixed strategies, they do not approach the expected utility. Based on this, what should be the general approach to finding Nash equilibria? Should you try to find dominated strategies first? (Graded on effort. No wrong answers.)
+
+### Mixed Strategy (Non-Zero Sum)
+So far we have only discussed zero sum games. Now, we are going to relax this constraint. One example of a non-zero sum game is the Prisoner's Dilemma. 
+
+6. Let's look at three formulations:
+
+Formulation 1
+```{r}
+tableOutput('prisoner.1')
+```
+
+Formulation 2
+```{r}
+tableOutput('prisoner.2')
+```
+
+Formulation 3
+```{r}
+tableOutput('prisoner.3')
+```
+
+Determine how many Nash equilibria there are for each formulation.
+
+7. Plug the third formulation into the matrix. By default, the slider is set to 0.5. Move the slider around to adjust Player's B probability of cooperating. At what probability of cooperating does Player A start having a lower expected utility? 
+
+8. There are some parallels of this setup to many real life situations. Oftentimes people cooperate in situations like these even though betraying the opponent is more advantageous. Why do some people cooperate despite this? (Graded on effort. No wrong answers.)
+
+# Mixed Strategy (3x3)
+
+## Matrix
+
+### Column 1
+```{r}
+#| title: Column 1
+
+numericInput('M11', '', value = 0)
+numericInput('M21', '', value = 0)
+numericInput('M31', '', value = 0)
+```
+
+### Column 2
+```{r}
+#| title: Column 2
+
+numericInput('M12', '', value = 0)
+numericInput('M22', '', value = 0)
+numericInput('M32', '', value = 0)
+```
+
+### Column 3
+```{r}
+#| title: Column 3
+
+numericInput('M13', '', value = 0)
+numericInput('M23', '', value = 0)
+numericInput('M33', '', value = 0)
+```
+
+## Results
+
+### Table
+
+```{r}
+#| title: Payoffs
+
+tableOutput('payoff.probs')
+```
+
+
+### Plot
+```{r}
+#| title: Expected Utilities
+
+plotlyOutput('running.average')
+```
+
+# Mixed Strategy (2x2)
+
+## Sliders {height=30%}
+```{r}
+#| title: Probability of Player B Cooperating
+
+sliderInput('prob', label = '', 
+            min = 0, max = 1, step = .01, value = 0.5)
+```
+
+## {.tabset}
+
+### Matrix
+
+#### Matrix (Row 1)
+
+##### M11
+```{r}
+#| title: Strategies A1, B1
+
+numericInput('A11', '', value = 0)
+numericInput('B11', '', value = 0)
+```
+
+##### M21
+```{r}
+#| title: Strategies A1, B2
+
+numericInput('A12', '', value = 0)
+numericInput('B12', '', value = 0)
+```
+
+#### Matrix (Row 2)
+
+##### M12
+```{r}
+#| title: Strategies A2, B1
+
+numericInput('A21', '', value = 0)
+numericInput('B21', '', value = 0)
+```
+
+##### M22
+```{r}
+#| title: Strategies A2, B2
+
+numericInput('A22', '', value = 0)
+numericInput('B22', '', value = 0)
+```
+
+### Results
+```{r}
+#| title: Expected Utilities
+
+plotlyOutput('exp.util')
+```
+
+
+```{r}
+#| context: server
+
+# Zero Sum
+payoff.table = reactive({
+  row.1 = c(input$M11, input$M12, input$M13)
+  row.2 = c(input$M21, input$M22, input$M23)
+  row.3 = c(input$M31, input$M32, input$M33)
+
+  payoff.table = matrix(c(row.1, row.2, row.3), nrow = 3, byrow = TRUE)
+  
+  player.a = rref(
+    rbind(
+      p1=c(payoff.table[1,] - payoff.table[2,], 0),
+      p2=c(payoff.table[1,] - payoff.table[3,], 0),
+      p3=rep(1,4)
+    )
+  )
+
+  player.b = rref(
+    rbind(
+      p1=c(payoff.table[,1] - payoff.table[,2], 0),
+      p2=c(payoff.table[,1] - payoff.table[,3], 0),
+      p3=rep(1,4)
+    )
+  )
+
+  expected.a = payoff.table[1,] %*% player.a[,4]
+  expected.b = -player.b[,4] %*% payoff.table[,1]
+
+  summary.table = cbind(
+    rbind(Player.A=player.a[,4], Player.B=player.b[,4]),
+    Expected.Utility=c(expected.a, expected.b)
+  )
+  
+  runs = 5000
+  mean.plot = 
+    data.frame(choice.a = sample(1:3, runs, T, player.a[,4]),
+               choice.b = sample(1:3, runs, T, player.b[,4]),
+               run=1:runs) %>%
+    mutate(payoff.a = map2_vec(choice.a, choice.b, \(i,j) {payoff.table[i,j]}),
+           mean.a = cummean(payoff.a)) %>% 
+    ggplot(aes(x=run, y=mean.a)) +
+    geom_line() +
+    geom_hline(yintercept = expected.a)
+
+  list(summary.table=summary.table, 
+       mean.plot=ggplotly(mean.plot) %>% 
+         layout(margin = list(t = 80), showlegend=T))
+
+})
+
+output$payoff.probs = renderTable(rownames = T, {
+  payoff.table()$summary.table
+})
+
+output$running.average = renderPlotly({
+  payoff.table()$mean.plot
+})
+
+# Non-Zero Sum
+exp.util = reactive({
+  
+  q = seq(0,1,0.01)
+  p = input$prob
+  
+  prob.matrix = cbind(p*q, (1-p)*q, p*(1-q), (1-p)*(1-q))
+  
+  A.payoff = c(input$A11, input$A12, input$A21, input$A22)
+  B.payoff = c(input$B11, input$B12, input$B21, input$B22)
+  
+  g = data.frame(
+    q=q,
+    exp.util.A = (prob.matrix %*% A.payoff)[,1],
+    exp.util.B = (prob.matrix %*% B.payoff)[,1]
+  ) %>% 
+    ggplot(aes(x=q)) +
+    geom_line(aes(y=exp.util.A, colour='Player A')) +
+    geom_line(aes(y=exp.util.B, colour='Player B')) +
+    labs(x='Probability of Player A Cooperating', y='Expected Utility') +
+    scale_color_manual(values = c(
+      'Player A'='#bd5a46',
+      'Player B'='#6ba1d6'
+    ))
+  
+  ggplotly(g) %>% 
+    layout(margin = list(t = 80), showlegend=T)
+})
+
+output$exp.util = renderPlotly({
+  exp.util()
+})
+
+# tables for instructions
+output$mixed.strategy = renderTable(rownames = T, {
+  matrix(c(0,-4,10,5,0,-2,-3,6,0), nrow=3, byrow=TRUE, 
+         dimnames = list(c('A1','A2','A3'), c('B1','B2','B3')))
+})
+
+output$dominated = renderTable(rownames = T, {
+  matrix(c(3,-5,10,16,14,-3,-8,9,12), nrow=3, byrow=TRUE, 
+         dimnames = list(c('A1','A2','A3'), c('B1','B2','B3')))
+})
+
+output$prisoner.1 = renderTable(rownames = T, {
+  c('Cooperate', 'Defect')
+  cbind(Cooperate=c('Cooperate'='(1,1)', 'Defect'='(2,0)'), 
+        Defect=c('Cooperate'='(0,2)', 'Defect'='(0,0)'))
+})
+
+output$prisoner.2 = renderTable(rownames = T, {
+  c('Cooperate', 'Defect')
+  cbind(Cooperate=c('Cooperate'='(1,1)', 'Defect'='(2,-1)'), 
+        Defect=c('Cooperate'='(-1,2)', 'Defect'='(0,0)'))
+})
+
+output$prisoner.3 = renderTable(rownames = T, {
+  c('Cooperate', 'Defect')
+  cbind(Cooperate=c('Cooperate'='(1,1)', 'Defect'='(2,0)'), 
+        Defect=c('Cooperate'='(0,2)', 'Defect'='(-1,-1)'))
+})
+```
+
+
+
+
+
+
+
+

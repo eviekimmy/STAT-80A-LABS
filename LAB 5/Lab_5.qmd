@@ -1,0 +1,276 @@
+---
+title: "Binary Outcomes"
+format: 
+  dashboard:
+    orientation: rows
+server: shiny
+---
+
+```{r}
+#| context: setup
+
+library(tidyverse)
+```
+
+# Sidebar {.sidebar width=35%}
+
+## Seed
+```{r}
+#| title: Random Seed
+
+numericInput(inputId = 'seed', label = 'Last Four Digits of Student ID',
+             value = 1234, min = 1000, max = 9999, step = 1)
+```
+
+## Instructions
+
+### Overview
+This lab will introduce different probability distributions through the lens of two different casino games: craps and roulette. You will identify which setups follow which distributions, and verify that the behavior matches through simulation. You will also briefly discuss a procedure for detecting bias. 
+
+### Preparation
+Please input the last four digits of your student ID into the seed. If you are 
+sharing a device with another student, either repeat the problems with your 
+specific seed, or make a note in your answers that you are using another 
+person's seed (please also write down the seed they are using). 
+
+### Part I: Distributions
+Very often, and especially in casino games, you are working with binary outcomes (winning vs losing a bet, landing vs not landing on a particular pocket, etc.). Each instance of an outcome is usually called a Bernoulli trial. So, for example, if you flip a coin 5 times, you performed 5 Bernoulli trials. All Bernoulli trials have one parameter called the "probability of success," usually denoted as $p$. We will focus on two distribution that utilize multiple Bernoulli trials: the Binomial distribution and the Geometric distribution.
+
+The Binomial distribution models the probability of getting $k$ successes when the number of Bernoulli trials $n$ is fixed. So, for example, the Binomial distribution can be used to determining the probability of getting 3 heads out of 5 coin flips. 
+
+$$
+\begin{aligned}
+X &\sim Bin(n, p), \\
+P(X = k|n,p) &= {n \choose k} p^k(1-p)^{n-k} \\
+\mathbb{E}[X] &= np \\
+Var(X) &= np(1-p)
+\end{aligned}
+$$
+Note that $k$ can be any integer between $0$ and $n$. 
+
+The Geometric distribution models the number of trials it takes until a success is observed. Because of this, it only has one parameter $p$. So, for example, it can be used to model the probability of taking 5 flips until a heads is observed. 
+
+$$
+\begin{aligned}
+X &\sim Geom(p), \\
+P(X = n|p) &= (1-p)^{n-1}p \\
+\mathbb{E}[X] &=  \frac{1}{p}\\
+Var(X) &= \frac{1-p}{p^2}
+\end{aligned}
+$$
+Note that $n$ can take on any positive integer value (1,2,3,...). 
+
+1. Determine which distribution should be used to model the probabilities for the following scenarios:
+  - The number of rolls until you roll two dice and get a 7
+  - After the shooter rolls 10 times, counting the number of times snake eyes were rolled.
+  - Observing 50 people winning the Monty Hall game by switching after watching all the reruns.
+  - Spinning a roulette wheel 100 times and counting the number of times it lands on the pocket 00. 
+  - Spinning a roulette wheel until it lands on black. 
+
+2. State whether the following statements are true of false:
+  - The order of successes and failures matter when using a Binomial distribution.
+  - If you use $Y=k$ for number of failures instead of $X=n$ for number of trials for Geometric, $\mathbb{E}[Y] = \frac{1}{p}-1$. 
+  - If you use $Y=k$ for number of failures instead of $X=n$ for number of trials for Geometric, $Var(Y) = \frac{1-p}{p^2}-1$. 
+  - You can model the number of failures for $n$ Bernoulli trials as $Bin(n, 1-p)$.
+
+### Part II: Craps
+Craps is broken up into two phases. In the first phase, you roll two dice once and determine whether you win the pass line bet (roll 7 or 11), lose the pass line bet (roll 2,3,12) or set the "point" for the next round (rest of the combinations). If a "point" is selected, then you move into phase two. In phase 2, you keep rolling until you either win the pass line bet (roll the point) or lose the bet (roll a 7). 
+
+Let's focus on phase 2 for now. Let's say we want to determine the average number of rolls for phase 2. While it is more difficult to determine this if the point is kept general, conditioning on a particular point from phase one is a lot easier to calculate. The only tricky thing is the probability of success. In this scenario, a success can be defined as rolling the point or rolling a 7. This means that our probability of success $p = P(7\ or\ point) = P(7) + P(point)$. Below is the probability of getting each point, as well as the probability of getting a 7:
+
+$$
+\begin{aligned}
+P(4) &= 3/36\\
+P(5) &= 4/36\\
+P(6) &= 5/36\\
+P(7) &= 6/36\\
+P(8) &= 5/36\\
+P(9) &= 4/36\\
+P(10) &= 3/36\\
+\end{aligned}
+$$
+
+3. After determining which distribution you should use, calculate the expected number of rolls given each point (i.e. $\mathbb{E}[X|point]$). Compare this with your recorded values from the simulation (the table that has the "average.streak" column). 
+
+Now, let's verify the probability of winning the pass line using simulation. The probability of winning the bet is 
+
+P(win bet) = P(roll 7 or 11 or win second phase) = P(7) + P(11) + P(win second phase).
+
+In order to solve the last probability, use the fact that $\sum P(A|B)P(B) = P(A)$. Here, $P(A|B)$ is the probability of winning the second phase given a particular point, and $P(B)$ is the probability of winning that point. This leads to $P(A) = (1/12)(1/3) + (1/9)(2/5) + ...$. After factoring in the probability of rolling 7 or 11 in phase 1, you eventually get P(win pass line bet) = 244/495 = 0.4929. 
+
+The second table gives the empirical estimates of each of these probabilities. The first column is the point (7 and 11 are included), the second column is how often that point was rolled in the first phase, the third column is how often that point won the pass line bet in the second phase (ignore this column for 7 and 11), and the last column is the joint of these two probabilities (P(win|point)P(point)). 
+
+
+
+4. Use the table to approximate the probability of winning the pass line bet. (Hint: you only need the last column).  Record the estimated probability. How well does it match what was derived?
+
+### Part III: Roulette Revisited - Bias Detection
+Let's revisit a problem from previous lab: detecting bias in a roulette wheel. A procedure To determine if a particular pocket is biased is to spin the wheel a certain number of times and count how many times it lands on the pocket. This can be modeled using a Binomial distribution, where $n$ is the number of spins and $p$ is the probability of landing on the supposedly "biased" pocket Since we are interested only in if it favors the pocket (we care less so about it being biased against), we can set a threshold for how often it lands on the pocket, and if it is above the threshold, to conclude that the wheel is biased. This threshold is usually set for a very unlikely probability, such as 5%. 
+
+5. Play with the number of spins and bias. What happens to the graph as bias increases? What happens to the graph as the number of spins increases? What happens to the threshold as either increases?
+
+6. Adjust the spins and bias until the error rate is around 0.05 (0.04 and 0.06 are also okay). Record your bias and spins. (The error rate can be interpreted as how often this procedure fails to detect a biased wheel).
+
+7. Does this procedure seem practical? (Graded on effort. No wrong answers).
+
+# Craps
+```{r}
+#| title: Average Streak of Each Point in Second Phase
+
+tableOutput(outputId = 'craps.geometric')
+```
+
+```{r}
+#| title: Empirical Probabilities of Winning w/ Each Point
+
+tableOutput(outputId = 'craps.prob')
+```
+
+
+
+# Roulette Revisited 
+
+## Sliders {height=40%}
+```{r}
+#| title: Sliders
+
+sliderInput(inputId = 'bias', label = 'Bias', 
+            min = 0.026, max = 0.04, value = 0.03, step = 0.001)
+
+sliderInput(inputId = 'spins', label = 'Spins', 
+            min = 1000, max = 10000, value = 1000, step = 1000)
+```
+
+## Visuals {height=60%}
+
+### Histogram
+```{r}
+#| title: Frequency of Biased and Unbiased Pocket Across 1000 Experiments
+
+plotOutput(outputId = 'histogram')
+```
+
+### Table 
+```{r}
+#| title: Summary Metrics After 1000 Experiments
+
+tableOutput(outputId = 'wheel.table')
+```
+
+```{r}
+#| context: server
+
+# Helper functions
+shooter.roll = function() {
+  sample(1:6, size = 2, replace = T) %>% sum()
+}
+
+second.phase = function(in.seed, point = 4) {
+  set.seed(seed = in.seed)
+  rolls = c(shooter.roll())
+  i = 1
+  while(!(rolls[i] %in% c(7, point))) {
+    i = i+1
+    rolls[i] = shooter.roll()
+  }
+  
+  win = rolls[i] != 7
+  duration = length(rolls)
+  
+  list(win, duration)
+}
+
+# Reactive functions to create data when input is changed
+craps.results = reactive({
+  
+  global.seed = input$seed
+  set.seed(seed = global.seed)
+  data.frame(point=rep(c(4,5,6,8,9,10), each=5000), 
+             seeds=sample.int(n = 1e6, size = 30000, replace = F)) %>% 
+    rowwise() %>% 
+    mutate(outputs = list(second.phase(in.seed = seeds, point = point)),
+           win = outputs[[1]],
+           duration = outputs[[2]]) %>%
+    select(-outputs) %>% ungroup() -> second.phase.df
+  
+  set.seed(global.seed + 5000)
+  data.frame(point=replicate(n=5000, expr = shooter.roll())) %>% 
+    count(point) %>% 
+    mutate(phase.1 = n / sum(n)) -> first.phase.df
+  
+ list(first=first.phase.df, second=second.phase.df)
+  
+})
+
+wheel.results = reactive({
+  
+  bias.prob = input$bias
+  spins = input$spins
+  global.seed = input$seed
+  
+  set.seed(seed = global.seed)
+  wheel.sim = data.frame(
+    biased = rbinom(n = 1000, size = spins, prob = bias.prob),
+    unbiased = rbinom(n = 1000, size = spins, prob = 1/38)
+  )
+  
+})
+
+# render tables
+output$craps.geometric = renderTable({
+  
+  req(craps.results())
+  
+  craps.results()$second %>% 
+    filter(point %in% c(4,5,6,8,9,10)) %>% 
+    summarise(.by = c(point),
+              average.streak = mean(duration))
+  
+})
+
+output$craps.prob = renderTable({
+  
+  req(craps.results())
+  
+  results = craps.results()
+  
+  results$second %>% 
+    summarise(.by = c(point),
+              phase.2 = mean(win)) %>% 
+    full_join(results$first, by='point') %>% 
+    replace_na(replace = list(phase.2=1)) %>% 
+    filter(point %in% 4:11) %>% 
+    mutate(phase.1.and.win = phase.1 * phase.2) %>% 
+    select(point, phase.1, phase.2, phase.1.and.win)
+  
+}, digits = 3)
+
+output$wheel.table = renderTable({
+  
+  req(wheel.results())
+  
+  wheel.results() %>% 
+    summarise(threshold = qbinom(p = 0.95, size = input$spins, prob = 1/38), 
+              prop.above.threshold = mean(biased > threshold),
+              error.rate = 1-prop.above.threshold) %>% 
+    pivot_longer(cols = everything(), names_to = 'Metrics', values_to = 'Value')
+    
+})
+
+output$histogram = renderPlot({
+  
+  req(wheel.results())
+  
+  wheel.results() %>% 
+    pivot_longer(cols = c(biased, unbiased), 
+                 names_to = 'wheel', values_to = 'frequency') %>% 
+    ggplot(aes(x=frequency, fill=wheel)) +
+    geom_histogram(binwidth = 1, position = 'identity', alpha=0.5) +
+    theme(legend.position = 'top')
+    
+})
+
+
+```
+
+

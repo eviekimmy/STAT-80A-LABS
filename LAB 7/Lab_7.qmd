@@ -1,0 +1,217 @@
+---
+title: "Zero Sum Games"
+format: 
+  dashboard:
+    orientation: rows
+server: shiny
+---
+
+```{r}
+#| context: setup
+
+# if(require('pracma')) {
+#   print('package is installed')
+# } else {
+#   install.packages('pracma')
+# }
+
+library(pracma)
+# library(tidyverse)
+```
+
+# {.sidebar width=35%}
+
+## Reset
+```{r}
+#| title: Reset Button
+
+actionButton('reset', label = 'Reset Matrix')
+```
+
+## Instructions
+
+### Overview
+In this lab you will practice finding the Nash equilibrium for different zero sum games. In addition, you will briefly deal with equilibrium mixed strategies for when multiple Nash equilibria are present in a zero sum game. 
+
+### Zero Sum Games
+Zero sum games are games where the amount one player gains is the amount another player loses (i.e. their total earnings sum to 0). Examples of zero sum games involve rock-paper-scissors, poker, and elections (or it can be represented as a zero sum game). For this lab, we will focus on zero sum games where each player has a fixed set of strategies. These can be represented using a payoff table. Here are some examples:
+
+**Game 1**
+```{r}
+tableOutput('Game.1')
+```
+
+**Game 2**
+```{r}
+tableOutput('Game.2')
+```
+
+**Game 3**
+```{r}
+tableOutput('Game.3')
+```
+
+**Game 4**
+```{r}
+tableOutput('Game.4')
+```
+
+Here, the value in each element of the table is the payoff for Player A when Player A and Player B use the corresponding strategies (so the payoff for Player B is the negative value of each element). 
+
+1. Determine which strategies are dominant strategies for each game. Put none if there are none. 
+
+1. Determine which strategies are dominated strategies for each game. Put none if there are none
+
+1. Determine the number of Nash equilibria for each game.
+
+4. Focus on the following payoff table:
+```{r}
+tableOutput('Game.Q4')
+```
+
+You will find that A1 and B2 are dominated strategies, so we can reduce the payoffs to
+```{r}
+tableOutput('Game.Q4.reduced')
+```
+
+You will also observe that there are no Nash equilibria for this setup. Instead, Player A assumes that Player B has a 50/50 chance between B1 and B3 and chooses the strategy that maximizes the expected payoff. Determine which strategy does this.
+
+### Mixed Strategies
+Sometimes, there is no Nash equilibrium. Take the following payoff table as an example:
+```{r}
+tableOutput('Game.mixed.strategy')
+```
+
+An alternative way to play this game is for each player to use a mixed strategy, where there are now probabilities assigned to which strategy they use. In the case of solving for Nash equilibria, the question now turns into determining which probabilities to use. 
+
+5. Fill in the payoff table in the numeric inputs. Record the probabilities for each strategy from the second table. This corresponds to the mixed equilibrium strategy for Player B.
+
+6. Reset the matrix. Flip the signs and transpose the payoff table. It should look like this:
+```{r}
+tableOutput('Game.mixed.inverted')
+```
+Repeat 5 with this table. This corresponds to the mixed equilibrium strategy for Player A.
+
+
+# RREF
+
+
+## Input
+### Column 1
+```{r}
+#| title: Payoff Col 1
+
+numericInput('M1.1', '',value = 0)
+numericInput('M2.1', '',value = 0)
+numericInput('M3.1', '',value = 0)
+```
+
+### Column 2
+```{r}
+#| title: Payoff Col 2
+
+numericInput('M1.2', '',value = 0)
+numericInput('M2.2', '',value = 0)
+numericInput('M3.2', '',value = 0)
+```
+
+### Column 3
+```{r}
+#| title: Payoff Col 3
+
+numericInput('M1.3', '',value = 0)
+numericInput('M2.3', '',value = 0)
+numericInput('M3.3', '',value = 0)
+```
+
+## Result
+```{r}
+#| title: Probs
+
+tableOutput('rref')
+```
+
+```{r}
+#| context: server
+
+generate.rref.table = reactive({
+  row.1 = c(input$M1.1, input$M1.2, input$M1.3)
+  row.2 = c(input$M2.1, input$M2.2, input$M2.3)
+  row.3 = c(input$M3.1, input$M3.2, input$M3.3)
+  
+  payoffs = matrix(c(row.1-row.2, 0, row.1-row.3, 0, 1,1,1,1),
+         nrow = 3,  byrow = T)
+  colnames(payoffs) = c('p1','p2','p3','Result')
+  rref(payoffs)
+})
+
+output$rref = renderTable({
+  req(generate.rref.table())
+  
+  generate.rref.table()
+  
+})
+
+observeEvent(input$reset, {
+  
+  updateNumericInput(session, 'M1.1', value = 0)
+  updateNumericInput(session, 'M2.1', value = 0)
+  updateNumericInput(session, 'M3.1', value = 0)
+  updateNumericInput(session, 'M1.2', value = 0)
+  updateNumericInput(session, 'M2.2', value = 0)
+  updateNumericInput(session, 'M3.2', value = 0)
+  updateNumericInput(session, 'M1.3', value = 0)
+  updateNumericInput(session, 'M2.3', value = 0)
+  updateNumericInput(session, 'M3.3', value = 0)
+  
+})
+
+# Tables for instructions
+output$Game.1 = renderTable(rownames = T, {
+  matrix(0.3*c(3,5,10,16,14,-3,-8,9,12), nrow=3, byrow = T, 
+         dimnames = list(c('A1','A2','A3'), c('B1','B2','B3'))) 
+})
+
+# Tables for instructions
+output$Game.2 = renderTable(rownames = T, {
+  matrix(2*c(0,-4,10,5,0,-2,-3,6,0), nrow=3, byrow = T,
+         dimnames = list(c('A1','A2','A3'), c('B1','B2','B3')))
+})
+
+# Tables for instructions
+output$Game.3 = renderTable(rownames = T, {
+  matrix(c(-5,0,-10,10,5,0,-5,5,-10), nrow=3, byrow = T,
+         dimnames = list(c('A1','A2','A3'), c('B1','B2','B3')))
+})
+
+# Tables for instructions
+output$Game.4 = renderTable(rownames = T, {
+  matrix(c(-15,-40,10,-5,5,0,-10,-40,15), nrow=3, byrow = T,
+         dimnames = list(c('A1','A2','A3'), c('B1','B2','B3')))
+})
+
+output$Game.Q4 = renderTable(rownames = T, {
+  matrix(c(3,5,10,16,14,-3,-8,9,12), nrow=3, byrow = T,
+         dimnames = list(c('A1','A2','A3'), c('B1','B2','B3')))
+})
+
+output$Game.Q4.reduced = renderTable(rownames = T, {
+  matrix(c(16,-3,-8,12), nrow=2, byrow = T,
+         dimnames = list(c('A2','A3'), c('B1','B3')))
+})
+
+output$Game.mixed.strategy = renderTable(rownames = T, {
+  matrix(c(0,-4,10,5,0,-2,-3,6,0), nrow=3, byrow = T,
+         dimnames = list(c('A1','A2','A3'), c('B1','B2','B3')))
+})
+
+output$Game.mixed.inverted = renderTable(rownames = T, {
+  matrix(-1*c(0,-4,10,5,0,-2,-3,6,0), nrow=3, byrow = F,
+         dimnames = list(c('B1','B2','B3'), c('A1','A2','A3')))
+})
+
+
+
+```
+
+

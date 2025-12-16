@@ -1,0 +1,8 @@
+input,value
+seed,123
+straight_amount,5
+split_amount,5
+color_amount,5
+dozen_amount,5
+bias_level,0.037
+bias_n,10000

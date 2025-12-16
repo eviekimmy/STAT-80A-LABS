@@ -1,0 +1,156 @@
+---
+title: "Monty Hall"
+format: 
+  dashboard:
+    orientation: rows
+server: shiny
+---
+
+```{r}
+#| context: setup
+
+library(tidyverse)
+```
+
+# Information {.sidebar}
+
+## Instructions
+
+### Overview
+This lab will explore the Monty Hall problem. You will calculate expected gains for different decisions, as well as have a chance to play the actual game! In addition, you will also generalize for when the number of doors is altered. 
+
+### Part I: Classical Monty Hall and Conditional Probability
+As a review, let's describe how the game works. You choose which one of three doors has the prize behind it (the other two have nothing). Once your door is chosen, Monty opens a door that has nothing behind it. You then decide whether to stay with your original door or choose the other unopened door. 
+
+At first glance, most people assume that both switching and staying have an equal chance of winning. However, if you use your expert knowledge of conditional probability, you realize that this is not the case. While there are many trajectories that each set of decisions can take, let's keep it general by only focusing on whether the door you chose has the prize or not. 
+
+1. Refer to the tree that is displayed on the screen (or in the scratch notes for this lab uploaded to Canvas). Calculate the following probabilities:
+  - switching leads to winning
+  - switching leads to losing
+  - staying leads to winning
+  - staying leads to losing
+  
+While an argument can be made about other forms of payment to get on a game show (taking time off work, travel, etc.) for this situation we are going to assume that there is no pay-in to play this game (i.e. you can play this game with no cost to you). For now, let's say that the gain from receiving the prize is 1.
+
+2. Use your probabilities from the previous question and these gains to calculate the expected gain for both staying and switching. Which decision maximizes the expected gain?
+
+3. Now that you know the winning strategy, let's test it out! Play 10 rounds of the Monty Hall game. Make whatever decisions you would like, but pay attention to how often staying or switching wins you the round. On Canvas, record how often switching vs staying wins the round. Does this match up with your expected gains?
+
+### Part II: Generalizations
+Let's say you are a casino. Because of the popularity of the game show, you would like to see if you can integrate this into one of the games you offer. However, you need to adjust the gains so that there is a house advantage. One way to determine this is to replace the losing gain 0 with a generic variable $X$ and keep the winning gain 1. Then, you would find the expected gains for both switching and staying using $X$ and determine what $X$ is need for both expectations to be below 0. Whatever value $X$ you calculate is the pay-in you will use if you winning the prize is \$1 (so, if you determine that $X \leq -3$, your setup will be someone pays \$3, they will either have a profit of -\$3 if they lose, or \$1 if they win).
+
+4. Use the method described above to find $X$.
+
+5. Based on the pay-outs you calculated, would this version of the Monty Hall problem be appealing to most players? (Graded on Effort. No wrong answers.)
+
+# Game
+
+## Start Game
+```{r}
+#| title: Play
+actionButton(inputId = 'start', label = 'Start Game')
+```
+
+## Results Log
+```{r}
+#| title: Results Log
+
+tableOutput(outputId = 'results.log')
+```
+
+
+```{r}
+#| context: server
+
+# initialize variables that will be updated in modals
+game = reactiveValues(
+  doors = c('1','2','3'),
+  chosen.door = NULL,
+  winning.door = NULL,
+  monty = NULL,
+  results = NULL
+)
+
+# first choice prompt
+first.choice = function() {
+  
+  # decide winning door
+  game$winning.door = sample(x = game$doors, size = 1)
+  
+  # pop-up
+  modalDialog(
+    selectInput('first.choice', 'Pick a Door:', 
+                choices = c(1,2,3)),
+    footer = tagList(
+          modalButton("Cancel"),
+          actionButton("first.ok", "OK")
+        )
+  )
+}
+
+# second choice prompt
+second.choice = function() {
+  
+  req(input$first.choice)
+  
+  # have monty choose door
+  game$chosen.door = input$first.choice
+  can.open = !(game$doors %in% c(game$chosen.door, game$winning.door))
+  game$monty = sample(x = game$doors[can.open], size = 1)
+  monty.text = str_c('Monty chose ', game$monty)
+  
+  # pop-up
+  modalDialog(
+    title = monty.text,
+    selectInput('second.choice', 'Switch?', 
+                choices = c('Yes', 'No')),
+    footer = tagList(
+          modalButton("Cancel"),
+          actionButton("second.ok", "OK")
+        )
+  )
+}
+
+observeEvent(input$start, {
+  # reset game state
+  game$chosen.door <- NULL
+  game$winning.door <- NULL
+  game$monty <- NULL
+  updateSelectInput(session, 'first.choice', selected = character(0))
+  
+  showModal(first.choice())
+})
+
+observeEvent(input$first.ok, {
+  removeModal()
+  showModal(second.choice())
+})
+
+observeEvent(input$second.ok, {
+  
+  removeModal()
+  
+  this.round = data.frame(
+    'First Choice'=game$chosen.door, 
+    'Winning Door'=game$winning.door,
+    "Monty's Choice"=game$monty, 
+    'Switched?'=input$second.choice, 
+    'Won' = ifelse(input$second.choice == 'Yes', # if the person switched
+                   game$winning.door != game$chosen.door, 
+                   game$winning.door == game$chosen.door)
+  )
+  if(is.null(game$results)) {
+    game$results = this.round
+  } else{
+    game$results = bind_rows(game$results, this.round)
+  }
+  
+  output$results.log = renderTable({
+    game$results
+  })
+})
+```
+
+
+
+
