@@ -35,16 +35,16 @@ Please set the seed to the last four digits of your student id.
 ### One run
 1. First, ensure that the probability set to 0.5, number of runs to 1, and number of flips is set to 1000. Hover your cursor over the last number in the run and use it to estimate the odds (both in favor and against) of getting heads. How do these measured quantities compare to their theoretical counterparts? Compare mean, odds in favor and odds against.
 
-2. Now, repeat these calculations for when number of flips is 5000 and then 10,000. What happens when you increase the number of flips? To what precision do they resemble the theoretical values (i.e. what decimal do they start to differ)?
+2. Now, repeat these calculations for when number of flips is 5000 and then 10,000. Record these to Canvas. What happens when you increase the number of flips? 
 
-3. Use what you just learned to describe the role that the law of large numbers plays in simulation.
+3. Use what you just learned to describe the role that the law of large numbers plays in simulation. (Open ended. Graded on effort.)
 
 ### Comparing Multiple Runs
-4. Set the number of runs back to 1000. Now, start increasing the number of runs to 3, 5, and 10 runs. Report the mean, variance, and range for the final point at each run.
+4. Set the number of runs back to 1000. Now, start increasing the number of runs to 3, 5, and 10 runs. Report the mean and range for the final point at each run.
 
 5. What happens to these measured quantities as you increase the number of runs?
 
-6. Use what you just learned to describe the role that the law of averages plays in simulation.
+6. Use what you just learned to describe the role that the law of averages plays in simulation. (Open ended. Graded on effort.)
 
 # Simulation
 
