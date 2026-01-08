@@ -95,6 +95,9 @@ play? (Graded on effort. No wrong answers.)
 ```{r}
 selectizeInput("co_nums", "Choose 6 numbers (1–42):", 
                choices = 1:40, multiple = TRUE)
+```
+
+```{r}
 numericInput('co_plays', 'Number of Plays', value = 10000,
              min=1000, max=100000, step=1000)
 ```
@@ -110,8 +113,15 @@ tableOutput('co_table')
 ```{r}
 selectizeInput("ca_nums", "Choose 5 numbers (1–47):", 
                choices = 1:47, multiple = TRUE)
+
+```
+
+```{r}
 selectizeInput("ca_mega", "Choose Mega Number (1–27):", 
                choices = 1:27, multiple = TRUE)
+```
+
+```{r}
 numericInput('ca_plays', 'Number of Plays', value = 10000,
              min=1000, max=100000, step=1000)
 ```
@@ -146,6 +156,7 @@ ca_results = reactive({
 # Corresponding tables
 output$co_table = renderTable({
   req(co_results())
+  req(length(input$co_plays) == 6)
   co_results() %>% 
     summarize(
       First = sum(Matches == 6),

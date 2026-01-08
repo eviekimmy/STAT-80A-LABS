@@ -64,7 +64,7 @@ Y = profit from dozen bet
 $$
 \begin{aligned}
 \mathbb{E}[3X + 2Y] &= 
-5\mathbb{E}[X] + 2\mathbb{E}[Y]  \\ 
+3\mathbb{E}[X] + 2\mathbb{E}[Y]  \\ 
 &\approx 3(-0.0526) + 2(-0.0526) \\ 
 &\approx -0.263
 \end{aligned}
